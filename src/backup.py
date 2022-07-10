@@ -20,34 +20,37 @@ class Backup:
         target.backupSaveButton.setToolTip("Backup current save (Game should be closed)")
         target.backupSaveButton.setText("Backup")
         target.backupSaveButton.setGeometry(5, 50, target.backupSize.width(), target.backupSize.height())
-        target.backupSaveButton.setFont(QFont("Noita BlackLetter", 20))
+        target.backupSaveButton.setFont(target.buttonFont)
 
         target.backupSaveButton.clicked.connect(target.backupCallback)
 
-        target.backupInputLine = QLineEdit(target)
-        target.backupInputLine.setFont(QFont("Noita BlackLetter", 10))
-        target.backupInputLine.setStyleSheet("* {color: white; selection-background-color: orange; border: 2px solid rgb(70, 70, 70)}" + \
-                                             "*:hover {background-color: rgb(50, 50, 50);}")
         backupLineShape = (225, 30)
 
-        target.backupInputLine.setGeometry(400 - backupLineShape[0] // 2, 300 - backupLineShape[1] // 2, backupLineShape[0], backupLineShape[1])
+        target.backupInputLine = QLineEdit(target)
+        target.backupInputLine.setFont(target.lineFont)
+        target.backupInputLine.setStyleSheet("* {color: white; selection-background-color: " + target.programData["styleColor"] + \
+                                             "; border: 2px solid rgb(70, 70, 70)}" + \
+                                             "*:hover {background-color: rgb(50, 50, 50);}")
+
+        target.backupInputLine.setGeometry(400 - backupLineShape[0] // 2, 300 - backupLineShape[1] // 2,
+                                           backupLineShape[0], backupLineShape[1])
         target.backupInputLine.returnPressed.connect(target.backupCheckStart)
         target.backupInputLine.hide()
 
 
         target.backupBackButton = QPushButton(target)
-        target.backupBackButton.setFont(QFont("Noita BlackLetter", 20))
+        target.backupBackButton.setFont(target.buttonFont)
         target.backupBackButton.setText("Back")
         target.backupBackButton.setGeometry(800 - target.backSize.width() - 5, 400 - target.backSize.height() - 5,
                                             target.backSize.width(), target.backSize.height())
-        target.backupBackButton.setStyleSheet("* {border: 0px; color: orange;}" + \
+        target.backupBackButton.setStyleSheet("* {border: 0px; color: " + target.programData["styleColor"] + ";}" + \
                                               "*:hover {background-color: rgb(50, 50, 50);}")
         target.backupBackButton.clicked.connect(target.backupBack)
         target.backupBackButton.hide()
 
         target.backupWarningSize = target.toolTipMetrics.size(0, "Existing backup with duplicate name.")
         target.backupDuplicateWarning = QLabel(target)
-        target.backupDuplicateWarning.setFont(QFont("Noita BlackLetter", 12))
+        target.backupDuplicateWarning.setFont(target.toolTipFont)
         target.backupDuplicateWarning.setText("Existing backup with duplicate name.")
         target.backupDuplicateWarning.setStyleSheet("* {color: red;}")
         target.backupDuplicateWarning.setGeometry(400 - target.backupWarningSize.width() // 2, 

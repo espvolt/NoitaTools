@@ -11,7 +11,7 @@ class Load:
         target.loadSize = target.buttonMetrics.size(0, "Load")
         target.loadSaveButton = QPushButton(target)
 
-        target.loadSaveButton.setFont(QFont("Noita BlackLetter", 20))
+        target.loadSaveButton.setFont(target.buttonFont)
         target.loadSaveButton.setText("Load")
         target.loadSaveButton.setGeometry(target.backupGeometry.left(), target.backupGeometry.top() + target.backupGeometry.height(),
                                     target.loadSize.width(), target.loadSize.height())
@@ -20,18 +20,20 @@ class Load:
 
         target.loadSaveList = QListWidget(target)
         target.loadSaveList.setGeometry(5, 25 + 5, 400, 400 - 25 - 10)
-        target.loadSaveList.setStyleSheet("* {background-color: rgb(50, 50, 50); border: 2px; color: orange;}")
+        target.loadSaveList.setStyleSheet("* {background-color: rgb(50, 50, 50); border: 2px; color: " + target.programData["styleColor"] + ";}")
         target.loadSaveList.verticalScrollBar().setStyleSheet("* {background-color: rgb(30, 30, 30);}")
-        target.loadSaveList.setFont(QFont("Noita BlackLetter", 12))
+        target.loadSaveList.setFont(target.toolTipFont)
         target.loadSaveList.clicked.connect(target.loadListClickedCallback)
 
 
 
         target.loadSaveBackButton = QPushButton(target)
-        target.loadSaveBackButton.setStyleSheet("* {color: orange; border: 0px; background-color: rgb(40, 40, 40);}" + \
-                                              "*:hover {background-color: rgb(60, 60, 60);}")
+        target.loadSaveBackButton.setStyleSheet("* {color: " + target.programData["styleColor"] + \
+                                                "; border: 0px; background-color: rgb(40, 40, 40);}" + \
+                                                "*:hover {background-color: rgb(60, 60, 60);}")
+
         target.loadSaveBackButton.setText("Back")
-        target.loadSaveBackButton.setFont(QFont("Noita BlackLetter", 20))
+        target.loadSaveBackButton.setFont(target.buttonFont)
         target.loadSaveButton.setToolTip("Loads a stored backup (Game should be closed)")
         target.loadSaveBackButton.setGeometry(800 - target.backSize.width() - 5, 400 - target.backSize.height() - 5,
                                             target.backSize.width(), target.backSize.height())
@@ -39,19 +41,19 @@ class Load:
         
         target.loadSaveSelected = QPushButton(target)
         target.loadSaveSelected.setText("Load")
-        target.loadSaveSelected.setFont(QFont("Noita BlackLetter", 20))
+        target.loadSaveSelected.setFont(target.buttonFont)
         target.loadSaveSelected.setGeometry(target.loadSaveBackButton.geometry().left(),
                                           target.loadSaveBackButton.geometry().top() - target.loadSize.height() - 5, 
                                           target.loadSize.width(), target.loadSize.height())
         target.loadSaveSelected.clicked.connect(target.threadedLoadSave)
 
-        target.loadDeleteSize = target.buttonMetrics.size(0, "Delete")
+        target.deleteSize = target.buttonMetrics.size(0, "Delete")
         target.loadDeleteButton = QPushButton(target)
-        target.loadDeleteButton.setFont(QFont("Noita BlackLetter", 20))
+        target.loadDeleteButton.setFont(target.buttonFont)
         target.loadDeleteButton.setText("Delete")
-        target.loadDeleteButton.setGeometry(800 - target.loadDeleteSize.width() - 5,
+        target.loadDeleteButton.setGeometry(800 - target.deleteSize.width() - 5,
                                           target.loadSaveSelected.geometry().top() - target.loadDeleteButton.geometry().height() - 5,
-                                          target.loadDeleteSize.width(), target.loadDeleteSize.height())
+                                          target.deleteSize.width(), target.deleteSize.height())
         target.loadDeleteButton.clicked.connect(target.loadDeleteCallback)
         target.resetLoadSave()   
 
@@ -146,6 +148,8 @@ class Load:
     def loadCallback(self):
         self.hideAllOptions()
 
+        self.loadSaveList.clear()
+        self.loadSaveList.addItem(QListWidgetItem(""))
         self.loadSaveList.show()
 
         for i in self.programData["backupData"]:
@@ -156,10 +160,10 @@ class Load:
         self.loadDeleteButton.show()
     
     def loadListClickedCallback(self):
-        self.loadSaveSelected.setStyleSheet("* {color: orange; border: 0px;}" + \
+        self.loadSaveSelected.setStyleSheet("* {color: " + self.programData["styleColor"] + "; border: 0px;}" + \
                                             "*:hover {background-color: rgb(60, 60, 60);}")
 
-        self.loadDeleteButton.setStyleSheet("* {color: orange; border: 0px;}" + \
+        self.loadDeleteButton.setStyleSheet("* {color: " + self.programData["styleColor"] + "; border: 0px;}" + \
                                             "*:hover {background-color: rgb(60, 60, 60);}")
 
         self.loadDeleteButton.setEnabled(True)
