@@ -1,5 +1,6 @@
 import sys
 import traceback
+from typing import Any
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -7,6 +8,7 @@ from PyQt5.QtWidgets import *
 from pkg_resources import FileMetadata
 from datetime import datetime
 from custom_bar import CustomBar
+import customWidgets
 
 import noita
 import util
@@ -26,14 +28,13 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         data = util.safeReadJson("./data.json", dict)
 
         if ("appDataPath" not in data):
-            appDataPath = noita.noitaAppDataPath()
-            data["appDataPath"] = appDataPath
+            data["appDataPath"] = noita.noitaAppDataPath()
 
         if ("gamePath" not in data):
-            steamPath = noita.noitaSteamPath()
+            data["gamePath"] = noita.noitaSteamPath()
 
-            if (steamPath != None):
-                data["gamePath"] = steamPath
+        if ("workshopPath" not in data):
+            data["workshopPath"] = noita.noitaSteamWorkshopPath()
 
         if ("numBackups" not in data):
             data["numBackups"] = 0
@@ -46,16 +47,17 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         
         if ("seeds" not in data):
             data["seeds"] = {}
-
         if (not os.path.exists("./backups")):
             os.mkdir("backups")
+
+        
 
         self.cleanData(data)
         self.saveData(data)
 
         return data
 
-    def cleanData(self, data):
+    def cleanData(self, data: dict[str, str | dict | list | None | int | float | bool]):
         backupPops = []
         for i in data["backupData"]:
             if (not os.path.exists(data["backupData"][i]["path"])):
@@ -64,7 +66,7 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         for pop in backupPops:
             data["backupData"].pop(pop)
 
-    def saveData(self, data):
+    def saveData(self, data: dict[str, str | dict | list | None | int | float | bool]):
         with open("./data.json", "w") as f:
             json.dump(data, f, indent=4)
 
@@ -72,16 +74,18 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         super(MainWindow, self).__init__()
 
         self.programData = self.initData()
+        self.filteredSpellData = noita.filterSpellData(self.programData["spellAssets"])
 
         fontDB = QFontDatabase()
         fontDB.addApplicationFont("./assets/NoitaBlackLetter.ttf")
+        fontDB.addApplicationFont("./assets/pixelated.ttf")
 
         self.layout  = QVBoxLayout()
         self.layout.addWidget(CustomBar(self))
         self.setLayout(self.layout)
         self.layout.setContentsMargins(0,0,0,0)
         self.layout.addStretch(-1)
-        self.setMinimumSize(800,400)
+        self.setFixedSize(800, 400)
         self.setWindowFlags(Qt.FramelessWindowHint)
         
         self.pressing = False
@@ -100,13 +104,23 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
 
         self.buttonMetrics = QFontMetrics(QFont("Noita BlackLetter", 20))
         self.toolTipMetrics = QFontMetrics(QFont("Noita BlackLetter", 12))
+        self.unicodeButtonMetrics = QFontMetrics(QFont("Arial", 20))
 
         self.buttonFont = QFont("Noita BlackLetter", 20)
         self.toolTipFont = QFont("Noita BlackLetter", 12)
         self.lineFont = QFont("Noita BlackLetter", 10)
+        self.unicodeButtonFont = QFont("Arial", 20)
+        self.perkTitleFont = QFont("Pixelated", 15)
+        self.perkDescriptionFont = QFont("Pixelated", 12)
+
+
 
         self.genericButtonStyle = "* {color: " + self.programData["styleColor"] + "; border: 0px;}" + \
                                   "*:hover {background-color: rgb(60, 60, 60);}"
+        
+        self.genericLineStyle = "* {color: white; selection-background-color: " + self.programData["styleColor"] + \
+                                "; border: 2px solid rgb(70, 70, 70)}" + \
+                                "*:hover {background-color: rgb(50, 50, 50);}"
 
         # BACKUP STUFF
 
@@ -122,23 +136,23 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         
         seed.Seed.initVariables(self)
         
-        
-
         # END
 
         self.menuBar = QMenuBar(self)
-        self.menuBar.setFont(QFont("NoitaBlackLetter", 10))
+        self.menuBar.setFont(self.lineFont)
 
         self.menuBar.setStyleSheet("QMenuBar {color: white; font-family: Noita BlackLetter;}" + \
                                    "QMenuBar::item:selected {background-color: rgb(60, 60, 60);}")
         self.menuBar.setGeometry(0, 25, 800, 30)
 
         self.fileMenuButton = QMenu("File", self)
-        self.fileMenuButton.setFont(QFont("NoitaBlackLetter", 10))
+        self.fileMenuButton.setFont(self.lineFont)
         self.fileMenuButton.setStyleSheet("QMenu::item {color: white; font-family: Noita BlackLetter; border: 0px}" + \
                                           "QMenu::item:selected {background-color: rgb(50, 50, 50); border: 0px}")
         self.fileMenuButton.addAction("Change AppData Path", self.changeAppDataPath)
         self.fileMenuButton.addAction("Change Game Path", self.changeGamePath)
+        self.fileMenuButton.addAction("Change Workshop Path", self.changeWorkshopPath)
+        self.fileMenuButton.addAction("Add Util Mod", self.addUtilMod)
 
         self.menuBar.addMenu(self.fileMenuButton)
 
@@ -172,7 +186,12 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         self.changeColorBackButton.setStyleSheet(self.genericButtonStyle)
         self.changeColorBackButton.hide()
 
-        self.menuBar.addMenu(self.optionsMenuButton)        
+        self.menuBar.addMenu(self.optionsMenuButton)
+        # self.funnyA = customWidgets.WandWidget(self, noita.getShop(self.filteredSpellData, 9, 1, 5)[0], self.perkDescriptionFont)
+        # self.funnyA.setPosition(500, 200)
+
+        # self.funnyB = customWidgets.BigWandWidget(self, noita.getShop(self.filteredSpellData, 9, 0, 5)[0][0][0], self.perkDescriptionFont, "* {color: " + self.programData["styleColor"] + "; border: 0px;}")
+
         # END
 
         self.enableAllOptions()
@@ -191,6 +210,28 @@ class MainWindow(QWidget, backup.Backup, load.Load, seed.Seed):
         
         self.saveData(self.programData)
 
+    def changeWorkshopPath(self):
+        self.programData["workshopPath"] = QFileDialog.getExistingDirectory(self, "Noita Worshop Directory",
+                                             self.programData["workshopPath"] if self.programData["workshopPath"] is not None else "C:",
+                                             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
+
+    def addUtilMod(self):
+        self.disableAllOptions()
+        self.hideAllOptions()
+
+        def threadedAddUtilMod():
+            self.loadingLabel.show()
+
+            noita.installUtilMod(self.programData["gamePath"])
+            
+            self.loadingLabel.hide()
+            self.enableAllOptions()
+            self.showAllOptions()
+
+        thread = threading.Thread(target=threadedAddUtilMod)
+        thread.daemon = True
+        thread.start()
+            
     def changeStyleColor(self):
         self.disableAllOptions()
         self.showAllOptions()
@@ -280,10 +321,13 @@ def exceptHook(*args):
 
     sys.__excepthook__(*args)
 
+
 if __name__ == "__main__":
     sys.excepthook = exceptHook
-    app = QApplication(sys.argv)
+    sys.argv += ["-platform", "windows:dpiawareness=1"]
 
+    app = QApplication(sys.argv)
+    
     mw = MainWindow()
     mw.show()
     
