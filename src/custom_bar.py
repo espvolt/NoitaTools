@@ -42,17 +42,17 @@ class CustomBar(QWidget):
 
         
 
-    def resizeEvent(self, QResizeEvent):
-        super(CustomBar, self).resizeEvent(QResizeEvent)
+    def resizeEvent(self, event: QResizeEvent):
+        super(CustomBar, self).resizeEvent(event)
         self.title.setFixedWidth(self.parent.width())
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         self.start = self.mapToGlobal(event.pos())
         self.parent.resize(800, 400)
         self.max = False
         self.pressing = True
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         if self.pressing:
             self.end = self.mapToGlobal(event.pos())
             self.movement = self.end-self.start
@@ -62,7 +62,7 @@ class CustomBar(QWidget):
                                 self.parent.height())
             self.start = self.end
 
-    def mouseReleaseEvent(self, QMouseEvent):
+    def mouseReleaseEvent(self, _: QMouseEvent):
         self.pressing = False
 
 

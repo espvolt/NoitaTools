@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import *
 
 import threading
 import shutil
+import noita
 
 class Load:
     @staticmethod
@@ -73,7 +74,7 @@ class Load:
         self.loadSaveList.selectionModel().clear()
 
         
-    def threadedLoadSave(self, target):
+    def threadedLoadSave(self, target: str):
         selected = self.loadSaveList.selectedItems()
 
         backupName = None
@@ -83,7 +84,7 @@ class Load:
             break
 
         
-        def loadSave(target):
+        def loadSave(target: str):
             self.loadDeleteButton.hide()
             self.loadSaveSelected.hide()
             self.loadSaveBackButton.hide()
@@ -112,8 +113,8 @@ class Load:
         
         self.loadSaveList.selectionModel().clear()
 
-    def threadedLoadDelete(self, target):
-        def deleteSave(target):
+    def threadedLoadDelete(self, target: str):
+        def deleteSave(target: str):
             self.loadDeleteButton.hide()
             self.loadSaveSelected.hide()
             self.loadSaveBackButton.hide()

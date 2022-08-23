@@ -1,21 +1,18 @@
-import sys
-import traceback
 
+import base64
+import io
+import math
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from pkg_resources import FileMetadata
-from datetime import datetime
-from custom_bar import CustomBar
 
-import noita
+import pymem
 import util
-import json
 import threading
-import shutil
-import os
-import re
 import subprocess
+import noita
+import customWidgets
+from PIL import Image, ImageQt
 
 class Seed:
     staticmethod
@@ -104,14 +101,82 @@ class Seed:
         target.seedDeleteButton.setStyleSheet(target.genericButtonStyle)
         target.seedDeleteButton.clicked.connect(target.seedDeleteButtonCallback)
 
+        target.caronSize = target.unicodeButtonMetrics.size(0, "ˇ")
+        
+        target.extraSeedInfoButton = QPushButton(target)
+        target.extraSeedInfoButton.setStyleSheet(target.genericButtonStyle)
+        target.extraSeedInfoButton.setFont(target.unicodeButtonFont)
+        target.extraSeedInfoButton.setText("ˇ")
+        target.extraSeedInfoButton.setGeometry(target.seedLoadLGeometry.left(), target.seedLoadLGeometry.bottom() + 5,
+                                               target.caronSize.width(), target.caronSize.width() + 7)
+        target.extraSeedInfoButton.clicked.connect(target.extraSeedInfoButtonCallback)
 
+        target.extraSeedInfoInput = QLineEdit(target)
+        target.extraSeedInfoInput.setGeometry(5, 55, target.seedLoadLGeometry.width(), target.seedLoadLGeometry.height())
+        target.extraSeedInfoInput.setFont(target.lineFont)
+        target.extraSeedInfoInput.setStyleSheet(target.genericLineStyle)
+        target.extraSeedInfoInput.textChanged.connect(target.extraSeedInfoInputTextChanged)
+        target.extraSeedInfoInput.hide()
+        target.extraSeedInfoLGeometry = target.extraSeedInfoInput.geometry()
+
+        target.circumflexSize = target.unicodeButtonMetrics.size(0, "ˆ")
+        target.hideSeedInfoButton = QPushButton(target)
+        target.hideSeedInfoButton.setStyleSheet(target.genericButtonStyle)
+        target.hideSeedInfoButton.setFont(target.unicodeButtonFont)
+        target.hideSeedInfoButton.setText("ˆ")
+        target.hideSeedInfoButton.setGeometry(target.extraSeedInfoLGeometry.left(), target.extraSeedInfoLGeometry.bottom() + 5,
+                                               target.circumflexSize.width(), target.circumflexSize.width() + 10)
+        target.hideSeedInfoButton.clicked.connect(target.hideSeedButtonCallback)
+        target.hideSeedInfoButton.hide()
+
+        target.perkWidgets: list[QPushButton] = []
+        target.customWidgets: list[QWidget] = []
+        target.perkModifiers: dict[int, dict] = {}
+
+        target.resetPerkVariables()
+
+        target.perkRerollData = {}
+
+        for i in range(7):
+            target.perkRerollData[i] = 0
+
+
+        target.selectedIndexes = []
+        
+
+        target.shopIndex = -1
+
+
+        
 
         target.resetSeedMenu()
 
+    def resetPerkVariables(self):
+        for widget in self.perkWidgets:
+            widget.deleteLater()
+
+        for widget in self.customWidgets:
+            widget.deleteLater()
+        
+        self.perkWidgets.clear()
+        self.customWidgets.clear()
+
+        for i in range(7):
+            self.perkModifiers[i] = {"extraLevel": 0, "chance": 100, "displayLucky": False}
+
+
     def seedButtonCallback(self):
+            
         self.hideAllOptions()
         self.resetSeedMenu()
-        
+        def setCurrentNoitaSeed():
+            if (noita.isNoitaOpen()):
+                self.seedSaveInput.setText(str(noita.getCurrentNoitaSeed()))
+
+        thread = threading.Thread(target=setCurrentNoitaSeed)
+        thread.daemon = True
+        thread.start()
+
         self.seedList.addItem(QListWidgetItem("")) # why
 
         self.seedList.show()
@@ -122,6 +187,8 @@ class Seed:
         self.seedSaveButton.show()
         self.seedLoadInput.show()
         self.seedDeleteButton.show()
+        self.extraSeedInfoButton.show()
+        self.hideSeedInfoButton.hide()
 
         for seed in self.programData["seeds"]:
             item = QListWidgetItem(self.programData["seeds"][seed])
@@ -173,7 +240,7 @@ class Seed:
         else:
             lastChar = self.seedSaveInput.text()[-1]
 
-            if (lastChar.isalpha()):
+            if (lastChar.isalpha() or lastChar == " "):
                 self.seedSaveInput.setText(self.seedSaveInput.text()[:-1])
             else:
                 self.seedSaveButton.setEnabled(True)
@@ -186,8 +253,8 @@ class Seed:
         else:
             lastChar = self.seedLoadInput.text()[-1]
 
-            if (lastChar.isalpha()):
-                self.seedLoadInput.setText(self.seedSaveInput.text()[:-1])
+            if (lastChar.isalpha() or lastChar == " "):
+                self.seedLoadInput.setText(self.seedLoadInput.text()[:-1])
             else:
                 self.seedLoadButton.setEnabled(True)
                 self.seedLoadButton.setStyleSheet(self.genericButtonStyle)
@@ -206,7 +273,6 @@ class Seed:
             self.loadingLabel.show()
 
             util.safeDelete(self.programData["appDataPath"] + "\\save00\\world")
-            util.safeDelete(self.programData["appDataPath"] + "\\save00\\mod_config.xml")
             util.safeDelete(self.programData["appDataPath"] + "\\save00\\world_state.xml")
             util.safeDelete(self.programData["appDataPath"] + "\\save00\\player.xml")
 
@@ -215,7 +281,7 @@ class Seed:
                 print(seed)
                 f.write(f"<MagicNumbers WORLD_SEED=\"{seed}\"/>")
             
-            subprocess.Popen("\"" + self.programData["gamePath"] + "\\noita.exe\" -no_logo_splashes -magic_numbers magic.txt",
+            subprocess.Popen("\"" + self.programData["gamePath"] + "\\noita.exe\" -magic_numbers magic.txt",
                              cwd=self.programData["gamePath"])
 
             self.seedLoadInput.show()
@@ -240,15 +306,15 @@ class Seed:
             thread.daemon = True
             thread.start()
 
-        ...
-
-
     def resetSeedMenu(self):
         self.seedList.clear()
         self.seedLoadInput.clear()
         self.seedNameSaveInput.clear()
         self.seedSaveInput.clear()
-        
+        self.extraSeedInfoInput.clear()
+        self.extraSeedInfoInput.clear()
+
+
         self.seedBackButton.hide()
         self.seedLoadButton.hide()
         self.seedList.hide()
@@ -257,6 +323,13 @@ class Seed:
         self.seedSaveButton.hide()
         self.seedLoadInput.hide()
         self.seedDeleteButton.hide()
+        self.hideSeedInfoButton.hide()
+        self.extraSeedInfoInput.hide()
+        self.hideSeedInfoButton.hide()
+        self.extraSeedInfoButton.hide()
+
+        self.perkWidgets.clear()
+        
 
         self.seedSaveButton.setStyleSheet("* {color: gray; border: 0px;}")
         self.seedLoadButton.setStyleSheet("* {color: gray; border: 0px;}")
@@ -265,3 +338,264 @@ class Seed:
         self.seedLoadButton.setEnabled(False)
         self.seedDeleteButton.setEnabled(False)
         self.seedSaveButton.setEnabled(False)
+
+
+    def extraSeedInfoButtonCallback(self):
+        self.extraSeedInfoButton.hide()
+        self.seedLoadButton.hide()
+        self.seedList.hide()
+        self.seedSaveInput.hide()
+        self.seedNameSaveInput.hide()
+        self.seedSaveButton.hide()
+        self.seedLoadInput.hide()
+        self.seedDeleteButton.hide()
+        self.hideSeedInfoButton.hide()
+
+        self.extraSeedInfoInput.show()
+        self.hideSeedInfoButton.show()
+
+        self.extraSeedInfoInput.setText(self.seedLoadInput.text())
+
+    def displayPerks(self, seed): # THIS IS FUCKING AWFUL :)
+        perkList = noita.getPerkList(seed, self.programData["perkAssets"], [], None)
+
+        startX = self.extraSeedInfoInput.geometry().right() + 100
+
+        currentY = self.extraSeedInfoInput.geometry().top()
+
+        currentIndex = 0
+        buttonSize = 30
+        perkRerollIndex = -1
+        self.shopIndex = -1
+        
+        shopWidgets: list[QPushButton] = []
+
+        for i in self.perkModifiers:
+            numPerks = self.perkModifiers[i]["extraLevel"] + 3
+
+            currentX = int(startX - buttonSize / 2 * math.sqrt((2 ** numPerks))) # Needs work
+            rerollPerks = None
+            perkLuckyData = noita.getPerkLucky(seed, self.perkModifiers[i]["chance"], self.perkModifiers[i]["extraLevel"], i)
+
+            if (self.perkRerollData[i] != 0):
+                for _ in range(self.perkRerollData[i]):
+                    data = noita.perkReroll(seed, self.programData["perkAssets"], numPerks, 0, perkRerollIndex)
+
+                    perkRerollIndex = data["rerollIndex"]
+                    rerollPerks = data["perks"]
+
+            for j in range(numPerks):
+                currentPerk = perkList[currentIndex]
+                currentPerkData = None
+                tempIndex = currentIndex
+
+                if (rerollPerks is not None):
+                    currentPerk = rerollPerks[j]
+                    currentIndex = perkRerollIndex + 3 - j
+
+                for k in self.programData["perkAssets"]:
+                    if (k["id"] == currentPerk):
+                        currentPerkData = k
+                        break
+                
+                button = QPushButton(self)
+
+                if (currentIndex in self.selectedIndexes): # if currentPerk has been selected
+                    color = QColor(self.programData["styleColor"])
+                    asArr = [color.red() - 50, color.green() - 50, color.blue() - 50]
+                    asArrStr = [str(max(0, i)) for i in asArr]
+                    colorString = "rgb(" + ", ".join(asArrStr) + ")"
+
+                    button.setStyleSheet("* {background-color: " + self.programData["styleColor"] + "; border: 0px;}" + \
+                                        "*:hover {background-color: " + colorString + ";}")
+
+                    if (currentPerkData["id"] == "EXTRA_PERK"):
+                        self.perkModifiers[i]["extraLevel"] += 1
+                    
+                    if (currentPerkData["id"] == "PERKS_LOTTERY"):
+                        self.perkModifiers[i]["chance"] -= 50
+                        self.perkModifiers[i]["displayLucky"] = True
+                        perkLuckyData = noita.getPerkLucky(seed, self.perkModifiers[i]["chance"], self.perkModifiers[i]["extraLevel"], i) # THIS CODE IS SO BAD :))
+
+                else:
+                    button.setStyleSheet(self.genericButtonStyle)
+
+                button.setGeometry(currentX, currentY, buttonSize, buttonSize)
+                if (not self.perkModifiers[i]["displayLucky"]):
+                    button.setIcon(QIcon(QPixmap("assets/" + currentPerkData["image"]).scaled(99, 99)))
+                else:
+                    if (perkLuckyData[j]):
+                        button.setIcon(QIcon(noita.addLuckyIcon("assets/" + currentPerkData["image"],
+                                                        "assets/data/ui_gfx/perk_icons/perks_lottery.png", (50, 50)).scaled(99, 99)))
+                    else:
+                        button.setIcon(QIcon(QPixmap("assets/" + currentPerkData["image"]).scaled(99, 99)))
+
+                button.setIconSize(QSize(34, 34))
+
+                def buttonCallback(_, index=currentIndex):
+                    if (index in self.selectedIndexes):
+                        self.selectedIndexes.remove(index)
+                    else:
+                        self.selectedIndexes.append(index)
+
+                    self.resetPerkVariables()
+
+                    self.displayPerks(seed) # redraws the perks
+                
+                icon = QPixmap("assets/" + currentPerkData["image"])
+                customWidget = customWidgets.PerkWidget(self, icon, self.perkTitleFont, self.perkDescriptionFont,
+                    currentPerkData["name"], "PlaceHolder")
+
+
+                def enterEvent(_, customWidget=customWidget):
+                    if (self.shopIndex == -1):
+                        customWidget.show()
+                    
+
+                def leaveEvent(_, customWidget=customWidget):
+                    customWidget.hide()
+
+                customWidget.setPosition(5, self.hideSeedInfoButton.geometry().bottom() - 10)
+
+                button.enterEvent = enterEvent
+                button.leaveEvent = leaveEvent
+                button.clicked.connect(buttonCallback)
+                button.show()
+
+                if (rerollPerks is not None):
+                    currentIndex = tempIndex
+
+                currentX += buttonSize + 5
+
+                self.perkWidgets.append(button)
+                rerollButton = QPushButton(self)
+
+                def rerollButtonCallback(event, but=rerollButton, level=i):
+                    if (event.button() == 1):
+                        self.perkRerollData[level] += 1
+
+                    if (event.button() == 2):
+                        self.perkRerollData[level] = max(0, self.perkRerollData[level] - 1)
+
+                    self.resetPerkVariables()
+                    self.displayPerks(seed)
+                    
+
+                rerollButton.setStyleSheet(self.genericButtonStyle)
+                rerollButton.setIcon(QIcon(QPixmap("assets/rerollIcon.png").scaled(99, 99)))
+                rerollButton.setIconSize(QSize(buttonSize, buttonSize))
+                rerollButton.setGeometry(currentX, currentY, buttonSize, buttonSize)
+                rerollButton.mousePressEvent = rerollButtonCallback
+                rerollButton.show()
+                self.perkWidgets.append(customWidget)
+                self.perkWidgets.append(rerollButton)
+                currentIndex += 1
+            
+            if (i < 6):
+                self.perkModifiers[i + 1]["extraLevel"] = self.perkModifiers[i]["extraLevel"]
+                self.perkModifiers[i + 1]["chance"] = self.perkModifiers[i]["chance"]
+                self.perkModifiers[i + 1]["displayLucky"] = self.perkModifiers[i]["displayLucky"]
+            currentY += buttonSize + 5
+
+        currentY = self.extraSeedInfoInput.geometry().top()
+        currentX += buttonSize + 5
+        
+        for i in range(7):
+            shop, shopType = noita.getShop(self.filteredSpellData, seed, i, 5)
+            shopButton = QPushButton(self)
+            shopButton.setGeometry(currentX, currentY, buttonSize, buttonSize)
+            shopButton.setStyleSheet(self.genericButtonStyle)
+            customWidget = None
+            if (shopType == 1): # Spell Shop
+                firstIcon = "assets/" + shop[0][0][0]["image"]
+                shopButton.setIcon(QIcon(QPixmap(firstIcon).scaled(50, 50)))
+
+                customWidget = customWidgets.SpellWidget(self, shop, self.perkDescriptionFont)
+                customWidget.setPosition(5, self.hideSeedInfoButton.geometry().bottom() - 10)
+                
+                def clicked(_, shop=shop, widget=customWidget, shopIndexClicked=i):
+                    if (self.shopIndex == -1):
+                        self.shopIndex = shopIndexClicked
+                        widget.show()
+
+                    elif (self.shopIndex == shopIndexClicked):
+                        self.shopIndex = -1
+                        widget.hide()
+
+                    else:
+                        shopWidgets[self.shopIndex].click()
+                        self.shopIndex = shopIndexClicked
+                        widget.show()
+
+                shopButton.clicked.connect(clicked)
+
+
+            else:
+                image = Image.open(io.BytesIO(base64.b64decode(shop[0][0][1])))
+                qtImage = ImageQt.ImageQt(image)
+                shopButton.setIcon(QIcon(QPixmap.fromImage(qtImage).scaled(50, 50)))
+                image.close()
+
+                customWidget = customWidgets.WandWidget(self, shop, self.perkDescriptionFont)
+                customWidget.setPosition(5, self.hideSeedInfoButton.geometry().bottom() - 10, self.extraSeedInfoInput.geometry().width() - 5)
+                customWidget.bigWandDrawPositionX = currentX + buttonSize + 5
+                customWidget.bigWandDrawPositionY = self.extraSeedInfoInput.geometry().top()
+                
+
+                def clicked(_, shop=shop, widget=customWidget, shopIndexClicked=i):
+                    if (self.shopIndex == -1):
+                        self.shopIndex = shopIndexClicked
+                        widget.show()
+
+                    elif (self.shopIndex == shopIndexClicked):
+                        self.shopIndex = -1
+                        widget.hide()
+
+                    else:
+                        shopWidgets[self.shopIndex].click()
+                        self.shopIndex = shopIndexClicked
+                        widget.show()
+
+                shopButton.clicked.connect(clicked)
+
+
+                
+
+
+            shopButton.show()
+            self.perkWidgets.append(customWidget)
+            self.perkWidgets.append(shopButton)
+            shopWidgets.append(shopButton)
+            currentY += buttonSize + 5
+
+
+
+
+    def extraSeedInfoInputTextChanged(self):
+        if (self.extraSeedInfoInput.text() == ""):
+            self.resetPerkVariables()
+            ...
+        
+        else:
+            lastChar = self.extraSeedInfoInput.text()[-1]
+
+            if (lastChar.isalpha() or lastChar == " "):
+                self.extraSeedInfoInput.setText(self.extraSeedInfoInput.text()[:-1])
+
+            self.resetPerkVariables()
+
+            self.perkWidgets.clear()
+            self.displayPerks(int(self.extraSeedInfoInput.text()))
+
+    def hideSeedButtonCallback(self):
+        text = self.extraSeedInfoInput.text()
+        self.resetSeedMenu()
+        self.seedButtonCallback()
+        self.seedLoadInput.setText(text)
+        
+
+            
+
+
+
+        

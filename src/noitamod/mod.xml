@@ -1,0 +1,7 @@
+<Mod
+	name = "NoitaTools Helper Mod"
+	description = "Run with no api restrictions."
+	request_no_api_restrictions = "1" 
+> 
+</Mod>
+
